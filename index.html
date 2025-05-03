@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workflow Helper</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Describe Your Workflow</h1>
+        <p>What task or process do you want to augment with AI?</p>
+        <form id="workflow-form">
+            <textarea id="workflow-input" name="workflow_text" rows="6" placeholder="e.g., 'Summarize meeting notes and extract action items'" required></textarea>
+            <button type="submit" id="submit-button">Get Suggested Steps</button>
+            <p id="loading-message" style="display: none;">Analyzing workflow...</p>
+            <p id="error-message" style="display: none; color: red;"></p>
+        </form>
+    </div>
+
+    <script>
+        // Placeholder for Supabase details
+        const PROJECT_SUPABASE_URL = https://rdmgubzovbfhdgvuaeyl.supabase.co; // Replace with your actual URL
+        const SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkbWd1YnpvdmJmaGRndnVhZXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYxMDA2OTEsImV4cCI6MjA2MTY3NjY5MX0.Qq4JMUbqzWQh0npuzejyWX5-PY_Xk-NRzfKnrBdHHKk; // Replace with your actual anon key
+
+        // Placeholder for Supabase Function URL (we'll get this later)
+        const PROCESS_WORKFLOW_FUNCTION_URL = 'https://rdmgubzovbfhdgvuaeyl.supabase.co/functions/v1/process-workflow'; // Replace later
+    </script>
+    <script src="app.js"></script> </body>
+</html>
