@@ -11,6 +11,11 @@ const FROM_EMAIL = Deno.env.get('FROM_EMAIL'); // Should be 'melvyn@befinityai.c
 const SUPABASE_URL = Deno.env.get('PROJECT_SUPABASE_URL'); // Renamed Supabase URL variable
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('PROJECT_SUPABASE_SERVICE_ROLE_KEY'); // Renamed Supabase service key variable
 
+// ---- ADD THESE LOGS FOR DEBUGGING ----
+console.log("DEBUG: Read MAILGUN_API_BASE_URL:", MAILGUN_API_BASE_URL);
+console.log("DEBUG: Read MAILGUN_DOMAIN:", MAILGUN_DOMAIN);
+// ------------------------------------
+
 console.log('Function send-instructions (Mailgun version) started.');
 
 Deno.serve(async (req) => {
