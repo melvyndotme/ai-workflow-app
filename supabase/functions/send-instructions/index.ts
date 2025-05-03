@@ -1,14 +1,17 @@
-// File: supabase/functions/send-instructions/index.ts
+// File: supabase/functions/send-instructions/index.ts (Revised Mailgun version with From Name)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { Buffer } from "https://deno.land/std@0.119.0/node/buffer.ts"; // For Base64 encoding
 
-// Environment variables (set in Supabase Dashboard)
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const SUPABASE_URL = Deno.env.get('PROJECT_SUPABASE_URL');
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('PROJECT_SUPABASE_SERVICE_ROLE_KEY');
-const FROM_EMAIL = Deno.env.get('FROM_EMAIL'); // The email verified with Resend
+// Read Mailgun & Supabase environment variables (set in Supabase Dashboard - Step 2)
+const MAILGUN_API_KEY = Deno.env.get('MAILGUN_API_KEY');
+const MAILGUN_DOMAIN = Deno.env.get('MAILGUN_DOMAIN'); // Should be 'mg.befinityai.com' from your settings
+const MAILGUN_API_BASE_URL = Deno.env.get('MAILGUN_API_BASE_URL'); // Should be your EU URL 'https://api.eu.mailgun.net/v3'
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL'); // Should be 'melvyn@befinityai.com' from your settings
+const SUPABASE_URL = Deno.env.get('PROJECT_SUPABASE_URL'); // Renamed Supabase URL variable
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('PROJECT_SUPABASE_SERVICE_ROLE_KEY'); // Renamed Supabase service key variable
 
-console.log('Function send-instructions started.');
+console.log('Function send-instructions (Mailgun version) started.');
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -18,27 +21,27 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client with SERVICE ROLE KEY
-     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-       throw new Error('Supabase URL or Service Role Key not set in environment variables.');
+    // 0. Initialize Supabase Admin Client
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('Supabase URL or Service Role Key not set in environment variables.');
     }
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     console.log('Supabase admin client initialized.');
 
-    // Get the user's email and the workflow ID from the incoming request
+    // 1. Get email and workflow ID from request body
     const { user_email, workflow_id } = await req.json();
     console.log('Received email:', user_email, 'and workflow ID:', workflow_id);
     if (!user_email || !workflow_id) {
       throw new Error('Email and Workflow ID are required.');
     }
 
-    // Retrieve the saved workflow details from the database using the ID
+    // 2. Retrieve workflow details from Database
     console.log('Fetching workflow details from DB...');
     const { data: workflowData, error: dbFetchError } = await supabaseAdmin
-      .from('workflows') // Your table name
+      .from('workflows')
       .select('original_workflow, suggested_steps')
-      .eq('id', workflow_id) // Find the row matching the ID
-      .single(); // Expect exactly one result
+      .eq('id', workflow_id)
+      .single();
 
     if (dbFetchError) {
       console.error('Supabase DB Fetch Error:', dbFetchError);
@@ -47,30 +50,26 @@ Deno.serve(async (req) => {
     if (!workflowData) {
       throw new Error(`Workflow with ID ${workflow_id} not found.`);
     }
-    console.log('Found workflow data:', workflowData);
+    console.log('Found workflow data.');
 
-    // Update the database record to include the user's email address
+    // 3. Update email in DB (optional step)
     console.log('Updating email in DB...');
     const { error: dbUpdateError } = await supabaseAdmin
       .from('workflows')
-      .update({ user_email: user_email }) // Set the user_email column
-      .eq('id', workflow_id); // For the matching row
-
+      .update({ user_email: user_email })
+      .eq('id', workflow_id);
     if (dbUpdateError) {
-      // Log the error, but continue to try sending the email
-      console.error('Supabase DB Update Error (continuing anyway):', dbUpdateError);
+        console.error('Supabase DB Update Error (continuing anyway):', dbUpdateError);
     } else {
-      console.log('Successfully updated email in DB.');
+        console.log('Successfully updated email in DB.');
     }
 
-    // Format the email content using the retrieved data
+    // 4. Format the email content
     const originalWorkflow = workflowData.original_workflow;
-    const steps = workflowData.suggested_steps; // This is the JSON array
-
+    const steps = workflowData.suggested_steps;
     let stepsHtml = '<ul>';
     if (Array.isArray(steps)) {
         steps.forEach(step => {
-            // Basic sanitization for HTML display
             const sanitizedStep = String(step).replace(/</g, "&lt;").replace(/>/g, "&gt;");
             stepsHtml += `<li>${sanitizedStep}</li>`;
         });
@@ -78,66 +77,69 @@ Deno.serve(async (req) => {
         stepsHtml += '<li>Could not retrieve specific steps.</li>';
     }
     stepsHtml += '</ul>';
-
-    const emailHtmlContent = `
-      <h1>Your AI Workflow Instructions</h1>
-      <p>Hi there,</p>
-      <p>Here are the AI-suggested steps based on your workflow:</p>
-      <p><strong>Original Workflow:</strong></p>
-      <p>${originalWorkflow.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
-      <p><strong>Suggested AI Steps:</strong></p>
-      ${stepsHtml}
-      <p>Use these steps to guide your AI implementation.</p>
-      <p>Best regards,<br>Your AI Workflow Helper</p>
-    `;
+    const emailHtmlContent = `<h1>Your AI Workflow Instructions</h1><p>Hi there,</p><p>Here are the AI-suggested steps based on your workflow:</p><p><strong>Original Workflow:</strong></p><p><span class="math-inline">\{String\(originalWorkflow\)\.replace\(/</g, "&lt;"\)\.replace\(/\>/g, "&gt;"\)\}</p\><p\><strong\>Suggested AI Steps\:</strong\></p\></span>{stepsHtml}<p>You can use these steps to guide your AI implementation.</p><p>If you have questions, feel free to reply to this email.</p><p>Best regards,<br>AI Workflow Helper</p>`;
     console.log('Formatted email content.');
 
-    // Call the Resend API to send the email
-    if (!RESEND_API_KEY) throw new Error('Resend API Key not set.');
-    if (!FROM_EMAIL) throw new Error('From Email address not set.');
+    // 5. Prepare data for Mailgun API call
+    if (!MAILGUN_API_KEY || !MAILGUN_DOMAIN || !FROM_EMAIL || !MAILGUN_API_BASE_URL) {
+        throw new Error('Mailgun API Key, Domain, From Email, or Base URL not set in environment variables.');
+    }
+    // Construct the correct Mailgun API endpoint URL for sending messages
+    const mailgunUrl = `<span class="math-inline">\{MAILGUN\_API\_BASE\_URL\}/</span>{MAILGUN_DOMAIN}/messages`;
 
-    console.log('Calling Resend API...');
-    const resendResponse = await fetch('https://api.resend.com/emails', {
+    // Prepare the data payload as URL-encoded form data
+    const formData = new URLSearchParams();
+    // Format the 'from' field like "Display Name <email@address.com>"
+    const fromAddressFormatted = `Melvyn | Befinity AI <${FROM_EMAIL}>`;
+    formData.append('from', fromAddressFormatted);
+    formData.append('to', user_email); // The recipient from the form
+    formData.append('subject', 'Your Custom AI Workflow Instructions');
+    formData.append('html', emailHtmlContent); // The HTML body of the email
+
+    // Create the Basic Authentication header using your Mailgun API key
+    const basicAuth = 'Basic ' + Buffer.from('api:' + MAILGUN_API_KEY).toString('base64');
+
+    console.log('Calling Mailgun API at:', mailgunUrl);
+
+    // 6. Call Mailgun API using fetch
+    const mailgunResponse = await fetch(mailgunUrl, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${RESEND_API_KEY}`,
-            'Content-Type': 'application/json'
+            'Authorization': basicAuth, // Use Basic Auth
+            'Content-Type': 'application/x-www-form-urlencoded', // Mailgun often prefers form data
         },
-        body: JSON.stringify({
-            from: FROM_EMAIL, // Your verified sender email address
-            to: [user_email], // Resend expects an array of recipients
-            subject: 'Your Custom AI Workflow Instructions',
-            html: emailHtmlContent, // The HTML content we created
-        }),
+        body: formData // Send the URL-encoded form data
     });
 
-    // Handle Resend API errors
-    if (!resendResponse.ok) {
-        const errorBody = await resendResponse.text();
-        console.error('Resend API Error:', resendResponse.status, errorBody);
-        throw new Error(`Resend API request failed: ${resendResponse.statusText} - ${errorBody}`);
+    // 7. Handle the response from Mailgun
+    if (!mailgunResponse.ok) {
+        // If Mailgun returned an error status (like 400, 401, 403, 500 etc.)
+        const errorBody = await mailgunResponse.text(); // Get error details from Mailgun
+        console.error('Mailgun API Error:', mailgunResponse.status, errorBody);
+        throw new Error(`Mailgun API request failed: ${mailgunResponse.statusText} - ${errorBody}`);
     }
 
-    const resendData = await resendResponse.json();
-    console.log('Resend API Success:', resendData);
+    const mailgunData = await mailgunResponse.json(); // Get success data from Mailgun if needed
+    console.log('Mailgun API Success:', mailgunData);
 
-    // Send a success response back to the frontend
+    // 8. Return a success response back to the frontend browser
     return new Response(
-      JSON.stringify({ success: true, message: 'Instructions sent successfully!' }),
+      JSON.stringify({ success: true, message: 'Instructions sent successfully via Mailgun!' }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200, // OK
+        status: 200, // OK status
       }
     );
 
   } catch (error) {
-    // Handle any errors that occurred
-    console.error('Error in send-instructions function:', error);
+    // Catch any error during the process (DB fetch, Mailgun call, etc.)
+    console.error('Error in send-instructions function (Mailgun):', error);
+    // Return an error response back to the frontend browser
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500, // Internal Server Error
+        status: 500, // Internal Server Error status
       }
     );
   }
