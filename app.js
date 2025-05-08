@@ -1,83 +1,80 @@
-// File: app.js (for index.html)
-
-// Get references to HTML elements from index.html
+// File: app.js (Final Version)
 const workflowForm = document.getElementById('workflow-form');
 const workflowInput = document.getElementById('workflow-input');
 const submitButton = document.getElementById('submit-button');
 const loadingMessage = document.getElementById('loading-message');
 const errorMessage = document.getElementById('error-message');
 
-// --- Supabase details are read from the constants defined in index.html's script tag ---
-// const SUPABASE_URL = '...'; // Defined in index.html
-// const SUPABASE_ANON_KEY = '...'; // Defined in index.html
-// const PROCESS_WORKFLOW_FUNCTION_URL = '...'; // Defined in index.html
-// ------------------------------------------------------------------------------------
+// Constants PROJECT_SUPABASE_URL, SUPABASE_ANON_KEY, PROCESS_WORKFLOW_FUNCTION_URL
+// are expected to be defined in index.html <script> tag before this script is loaded
 
-
-// Listen for when the user submits the first form (clicks "Get Suggested Steps")
 workflowForm.addEventListener('submit', async (event) => {
-    event.preventDefault(); // Stop the browser from doing a default form submission
+    event.preventDefault(); // Prevent default page reload on form submission
 
-    // Show loading message, hide previous errors, disable button
+    // Update UI to show loading state
     loadingMessage.style.display = 'block';
-    errorMessage.style.display = 'none';
+    errorMessage.style.display = 'none'; // Hide previous errors
     errorMessage.textContent = ''; // Clear previous error text
-    submitButton.disabled = true;
+    submitButton.disabled = true; // Disable button during processing
     submitButton.textContent = 'Processing...';
 
-    const workflowText = workflowInput.value; // Get the text from the textarea
+    const workflowText = workflowInput.value; // Get user's workflow description
 
     try {
-        // Call your deployed Supabase Edge Function 'process-workflow'
+        // Ensure the function URL constant exists (defined in index.html)
+        if (typeof PROCESS_WORKFLOW_FUNCTION_URL === 'undefined' || !PROCESS_WORKFLOW_FUNCTION_URL) {
+             throw new Error("Configuration error: Process function URL not set in index.html.");
+        }
+
         console.log("Sending request to:", PROCESS_WORKFLOW_FUNCTION_URL);
+        // Call the backend function to process the workflow
         const response = await fetch(PROCESS_WORKFLOW_FUNCTION_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // We don't strictly need apikey here because we used --no-verify-jwt
-                // If function security changes later, you might add: 'apikey': SUPABASE_ANON_KEY
+                // Include anon key if function security requires it (not needed with --no-verify-jwt setup)
+                // 'apikey': SUPABASE_ANON_KEY
             },
-            // Send the workflow text in the request body as JSON
-            body: JSON.stringify({ workflow_text: workflowText })
+            body: JSON.stringify({ workflow_text: workflowText }) // Send workflow text in JSON body
         });
 
         console.log("Received response status:", response.status);
-        const responseData = await response.json(); // Read the response body as JSON
+        const responseData = await response.json(); // Get the JSON response body
 
-        // Check if the function returned an error (based on HTTP status or custom error field)
+        // Check if the function returned an error
         if (!response.ok) {
             console.error("Function returned error:", responseData);
-            // Use the error message from the function if available, otherwise use HTTP status
-            throw new Error(responseData.error || `Request failed with status: ${response.status}`);
+            // Throw an error with the message from the backend if available
+            throw new Error(responseData.error || `Request failed with status: ${response.status}. Check server logs.`);
         }
 
-        // If successful, the response should contain workflowId and steps
         console.log('Received data from function:', responseData);
-        const { workflowId, steps } = responseData;
+        const { workflowId, steps } = responseData; // Extract data from response
 
-        // Validate the response data
+        // Validate received data
         if (workflowId === undefined || steps === undefined) {
-             console.error("Invalid response data:", responseData);
+             console.error("Invalid response data received from function:", responseData);
              throw new Error('Invalid response from function: missing workflowId or steps.');
         }
 
-        // Store the results in the browser's localStorage. This is a simple way
-        // to pass data between pages (index.html -> results.html).
+        // Store results in the browser's localStorage to pass to the next page
         localStorage.setItem('workflowId', workflowId);
         localStorage.setItem('suggestedSteps', JSON.stringify(steps)); // Store steps array as a JSON string
+        localStorage.setItem('originalWorkflow', workflowText); // Also store the original text for display
 
         // Redirect the user's browser to the results page
         window.location.href = 'results.html';
 
     } catch (error) {
-        // If anything went wrong (network issue, function error, validation error)
+        // Handle any errors during the fetch or processing
         console.error('Error processing workflow:', error);
-        errorMessage.textContent = `Error: ${error.message}`; // Display the error message on the page
+        // Display a user-friendly error message on the page
+        errorMessage.textContent = `Error: ${error.message.includes('Failed to fetch') ? 'Network error or function unavailable.' : error.message}`;
         errorMessage.style.display = 'block';
 
-        // Re-enable the button and hide loading message so the user can try again
+        // Restore button state
         submitButton.disabled = false;
         submitButton.textContent = 'Get Suggested Steps';
-        loadingMessage.style.display = 'none';
+        loadingMessage.style.display = 'none'; // Hide loading message
     }
 });

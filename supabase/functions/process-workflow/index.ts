@@ -1,8 +1,8 @@
-// File: supabase/functions/process-workflow/index.ts (Restoring JSON prompt)
+// File: supabase/functions/process-workflow/index.ts (Final Version)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
-// Read Environment Variables (Check OPENAI_API_KEY in Supabase Secrets!)
+// Read Environment Variables
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const SUPABASE_URL = Deno.env.get('PROJECT_SUPABASE_URL'); // Use renamed variable
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('PROJECT_SUPABASE_SERVICE_ROLE_KEY'); // Use renamed variable
@@ -22,67 +22,66 @@ Deno.serve(async (req) => {
        throw new Error('Supabase URL or Service Role Key not set in environment variables.');
     }
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    console.log('Supabase admin client initialized.');
 
     // Get workflow text from request
     const { workflow_text } = await req.json();
-    console.log('Received workflow text:', workflow_text);
     if (!workflow_text) {
       throw new Error('Workflow text is required.');
     }
 
-    // ** Restore the prompt asking specifically for JSON **
-    const prompt = `Analyze the following user-described workflow and break it down into 3-4 distinct, actionable steps that could be augmented or automated using AI. Respond ONLY with a JSON array of strings, where each string is a step. Example response: ["Step 1 description", "Step 2 description", "Step 3 description"]. Workflow: "${workflow_text}"`;
-    console.log('Constructed OpenAI prompt requesting JSON array.');
+    // New prompt STRICTLY focused on AI assistance
+    const prompt = `Analyze the user's workflow described below. Identify exactly 4 distinct ways an AI assistant could *help* the user perform parts of this workflow more effectively or easily. Describe these 4 assistance steps clearly and actionably. Keep the steps concise, logical, and sequential, focusing *only* on how the AI assists the user, not on replacing the user or fully automating tasks. Respond ONLY with a JSON array of strings containing these 4 assistance-focused steps. Example response: ["AI assists by drafting summaries from notes", "AI helps identify key data points for user review", "AI aids in formatting the report sections based on input", "AI assists with checking provided text for inconsistencies"]. Workflow: "${workflow_text}"`;
 
     // Call OpenAI API
-    if (!OPENAI_API_KEY) throw new Error('OpenAI API Key not set in environment variables.');
+    if (!OPENAI_API_KEY) {
+        console.error('OpenAI API Key is not set in environment variables.');
+        throw new Error('OpenAI API Key is missing.');
+    }
 
     console.log('Calling OpenAI API...');
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`, // Check API Key secret is correct!
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4.1-nano',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.5
-        // Removed the response_format parameter as per previous step
+        // No response_format parameter needed here, rely on prompt
       }),
     });
 
     // Handle OpenAI API errors
     if (!openaiResponse.ok) {
       const errorBody = await openaiResponse.text();
-      console.error('OpenAI API Error Response Body:', errorBody); // Log the actual error body from OpenAI
+      console.error('OpenAI API Error Response Body:', errorBody);
       throw new Error(`OpenAI API request failed: ${openaiResponse.statusText}`);
     }
 
     const openaiData = await openaiResponse.json();
-    console.log('Received OpenAI response object:', JSON.stringify(openaiData)); // Log the whole response object
 
     // Extract and parse the suggested steps
     let suggestedSteps = [];
     try {
       const responseContent = openaiData.choices?.[0]?.message?.content;
-      console.log('Raw OpenAI response content:', responseContent); // Log raw content string
-      if (!responseContent) throw new Error('No content in OpenAI response message.');
+      if (!responseContent) {
+          console.error('No content found in OpenAI response message.');
+          throw new Error('No content in OpenAI response message.');
+      }
 
-      // Attempt to parse the response content string as JSON
-      // Basic check: does it start/end with array brackets?
+      console.log('Attempting to parse raw OpenAI content:', responseContent);
       const trimmedContent = responseContent.trim();
+      // Try parsing directly if it looks like an array, otherwise try extracting from markdown
       if (trimmedContent.startsWith('[') && trimmedContent.endsWith(']')) {
-          suggestedSteps = JSON.parse(trimmedContent); // Try parsing directly
+          suggestedSteps = JSON.parse(trimmedContent);
       } else {
-          // Attempt to extract from markdown if necessary (though less likely now)
           const jsonStringMatch = trimmedContent.match(/```json\n([\s\S]*?)\n```|(\[.*?\])/);
           if (jsonStringMatch) {
                let jsonString = jsonStringMatch[1] || jsonStringMatch[2];
                suggestedSteps = JSON.parse(jsonString);
           } else {
-               // If it's not wrapped in brackets and not in markdown, assume it's not valid JSON array
                throw new Error('Response content is not a recognizable JSON array format.');
           }
       }
@@ -91,13 +90,12 @@ Deno.serve(async (req) => {
       if (!Array.isArray(suggestedSteps)) {
          throw new Error('Parsed response content is not a valid JSON array.');
       }
-      console.log('Parsed suggested steps:', suggestedSteps);
+      console.log('Successfully parsed steps.');
 
     } catch (parseError) {
-       // Log details if parsing fails
        console.error('Failed to parse OpenAI response content as JSON array:', parseError);
-       // Raw content was already logged above
-       throw new Error(`Could not parse steps from AI response. Check logs for details.`); // Throw the specific error
+       // Include the raw content in the error thrown back if parsing fails
+       throw new Error(`Could not parse steps from AI response. Raw content: ${openaiData.choices?.[0]?.message?.content}`);
     }
 
     // Save to Supabase Database
@@ -108,8 +106,13 @@ Deno.serve(async (req) => {
       .select('id')
       .single();
 
-    if (dbError) throw dbError;
-    if (!dbData || !dbData.id) throw new Error('Failed to retrieve ID after inserting into database.');
+    if (dbError) {
+        console.error('Supabase DB Insert Error:', dbError);
+        throw dbError;
+    }
+    if (!dbData || !dbData.id) {
+        throw new Error('Failed to retrieve ID after inserting into database.');
+    }
     const workflowId = dbData.id;
     console.log('Saved to DB. New workflow ID:', workflowId);
 
@@ -121,11 +124,11 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     // Catch any error during the process
-    console.error(`Error in process-workflow function: ${error.message}`); // Log the specific error message
-    // Also log the full error object for more details if available
-    console.error('Full error object:', error);
+    console.error(`Error in process-workflow function: ${error.message}`);
+    console.error('Full error object:', error); // Log full error for debugging
+    // Return a generic server error message to the frontend
     return new Response(
-      JSON.stringify({ error: `Server error: ${error.message}` }), // Send specific error message back
+      JSON.stringify({ error: `Server error processing workflow.` }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

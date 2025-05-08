@@ -1,0 +1,5 @@
+# Supabase specific files
+supabase/
+
+# Mac specific files
+.DS_Store

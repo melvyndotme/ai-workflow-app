@@ -3,31 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suggested Steps</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Suggested Steps for AI Assistance</title> <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon">
 </head>
 <body>
     <div class="container">
-        <h1>Suggested AI Steps</h1>
+        <div class="page-header">
+             <img src="images/befinity-logo.png" alt="Befinity AI Logo" class="logo"> <h1>Suggested AI Assistance Steps</h1> </div>
+
+        <div id="original-workflow-display" style="margin-bottom: 20px; padding: 12px 15px; background-color: #f0f0f0; border-left: 4px solid #cccccc; border-radius: 4px; color: #555555;">
+            <strong>Original Workflow:</strong> <span id="original-workflow-text">Loading...</span>
+        </div>
+
+        <p>Your workflow has been broken down into steps where AI can provide assistance.</p>
+
         <div id="steps-display">
             <p>Loading steps...</p>
-            </div>
+        </div>
 
         <hr>
 
-        <h2>Get Custom Instructions</h2>
-        <p>Enter your email to receive detailed instructions based on these steps.</p>
+        <h2>What's next?</h2>
+        <p>Enter your email and we'll send you the <strong>custom instructions</strong> (a detailed system prompt) ready to set up your own AI assistant in ChatGPT, Copilot, Gemini, etc.</p>
         <form id="email-form">
-            <input type="email" id="user-email" name="user_email" placeholder="your.email@example.com" required>
-            <input type="hidden" id="workflow-id" name="workflow_id"> <button type="submit" id="send-button">Send Me Instructions</button>
-            <p id="sending-message" style="display: none;">Sending...</p>
-            <p id="email-error-message" style="display: none; color: red;"></p>
-        </form>
+            <label for="user-email">Enter your email below:</label> <input type="email" id="user-email" name="user_email" placeholder="you@email.com" required>
+            <input type="hidden" id="workflow-id" name="workflow_id"> <button type="submit" id="send-button">Send Me The Custom Instructions</button> <p id="sending-message" style="display: none;">Generating & Sending...</p> <p id="email-error-message" style="display: none; color: red;"></p> </form>
     </div>
 
     <script>
-        // Placeholder for Supabase Function URL (we'll get this later)
-        const SEND_INSTRUCTIONS_FUNCTION_URL = 'https://rdmgubzovbfhdgvuaeyl.supabase.co/functions/v1/send-instructions'; // Replace later
+        const SEND_INSTRUCTIONS_FUNCTION_URL = 'https://rdmgubzovbfhdgvuaeyl.supabase.co/functions/v1/send-instructions'; // YOUR VALUE
     </script>
-    <script src="results.js"></script> </body>
+    <script src="results.js"></script>
+</body>
 </html>
