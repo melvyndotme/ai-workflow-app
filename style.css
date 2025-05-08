@@ -1,19 +1,19 @@
-/* style.css - Final Version */
+/* style.css - Final Version with 100px Logo */
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; /* Common system font stack */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     line-height: 1.6;
     margin: 0;
-    background-color: #FDFDFD; /* White background */
-    color: #555555; /* Default paragraph text color */
+    background-color: #FDFDFD;
+    color: #555555;
 }
 
 .container {
     max-width: 600px;
     margin: 40px auto;
-    padding: 25px 30px; /* Slightly more padding */
-    background-color: #FDFDFD; /* White container */
+    padding: 25px 30px;
+    background-color: #FDFDFD;
     border-radius: 8px;
-    border: 1px solid #eeeeee; /* Subtle border */
+    border: 1px solid #eeeeee;
 }
 
 /* Styles for Header with Logo */
@@ -25,9 +25,9 @@ body {
 }
 
 .logo {
-    width: 45px;
-    height: 45px;
-    margin-right: 15px;
+    width: 100px; /* <<< CHANGED from 45px */
+    height: 100px; /* <<< CHANGED from 45px */
+    margin-right: 15px; /* Adjust if more space needed */
     flex-shrink: 0;
 }
 
@@ -36,15 +36,15 @@ body {
     margin-top: 0;
     flex-grow: 1;
     font-size: 1.8em;
-    color: #121212; /* Black heading */
+    color: #121212;
     line-height: 1.3;
 }
 
 h2 {
-    color: #121212; /* Black subheading */
+    color: #121212;
     margin-top: 30px;
     margin-bottom: 15px;
-    border-bottom: 1px solid #eeeeee; /* Subtle separator */
+    border-bottom: 1px solid #eeeeee;
     padding-bottom: 5px;
 }
 
@@ -52,29 +52,29 @@ label {
     display: block;
     margin-bottom: 8px;
     font-weight: bold;
-    color: #555555; /* Dark grey label */
+    color: #555555;
 }
 
 textarea, input[type="email"] {
     width: 100%;
     padding: 12px;
     margin-bottom: 20px;
-    border: 1px solid #cccccc; /* Slightly darker border */
+    border: 1px solid #cccccc;
     border-radius: 4px;
     box-sizing: border-box;
     font-size: 1em;
-    color: #121212; /* Black input text */
+    color: #121212;
     background-color: #FDFDFD;
 }
 
 textarea::placeholder, input[type="email"]::placeholder {
-    color: #999999; /* Lighter placeholder text */
+    color: #999999;
 }
 
 button, .button {
     display: inline-block;
-    background-color: #D63C3F; /* Red background */
-    color: #FDFDFD !important; /* White text */
+    background-color: #D63C3F;
+    color: #FDFDFD !important;
     padding: 12px 25px;
     border: none;
     border-radius: 5px;
@@ -87,7 +87,7 @@ button, .button {
 }
 
 button:hover, .button:hover {
-    background-color: #b82c30; /* Darker red on hover */
+    background-color: #b82c30;
     text-decoration: none;
 }
 
@@ -96,8 +96,8 @@ button:disabled {
     cursor: not-allowed;
 }
 
-a { /* Default link style (not buttons/signature) */
-    color: #D63C3F; /* Red links */
+a {
+    color: #D63C3F;
     text-decoration: none;
 }
 
@@ -112,7 +112,7 @@ hr {
 }
 
 #steps-display ol {
-    list-style: none; /* Remove default numbering */
+    list-style: none;
     padding-left: 0;
     margin-top: 10px;
 }
@@ -122,15 +122,13 @@ hr {
     background-color: #f8f8f8;
     padding: 12px 15px;
     border-radius: 4px;
-    border-left: 4px solid #D63C3F; /* Red accent border */
+    border-left: 4px solid #D63C3F;
     color: #121212;
 }
-/* Add this if you want explicit step numbers styled differently */
 #steps-display li strong {
     color: #121212;
     margin-right: 8px;
 }
-
 
 #original-workflow-display {
     margin-bottom: 20px;
@@ -145,14 +143,26 @@ hr {
 }
 
 #error-message, #email-error-message {
-    color: #D63C3F; /* Red error text */
+    color: #D63C3F;
     font-weight: bold;
     margin-top: 10px;
 }
 
+/* Responsive Adjustments */
 @media (max-width: 480px) {
-    .page-header h1 { font-size: 1.5em; }
-    .logo { width: 40px; height: 40px; margin-right: 10px; }
-     .container { margin: 20px 10px; padding: 20px; }
-    button, .button { padding: 10px 20px; }
+    .page-header h1 {
+        font-size: 1.5em;
+    }
+    .logo {
+        width: 70px;  /* <<< CHANGED from 40px (adjust as needed for mobile) */
+        height: 70px; /* <<< CHANGED from 40px */
+        margin-right: 10px;
+    }
+     .container {
+        margin: 20px 10px;
+        padding: 20px;
+    }
+    button, .button {
+        padding: 10px 20px;
+    }
 }
